@@ -1,0 +1,1190 @@
+---
+title: "Project2 Nanodegree"
+author: "Krishna P Koirala"
+date: "1/23/2018"
+output: 
+  html_document: 
+    fig_width: 8
+---
+
+
+# My Words 
+
+I am very excited to do analysis of Red wine data which contains 
+1,599 red wines with 11 variables on the chemical properties of the wine.
+Although I am not a greate fan of Wine, my focus would be to see how each 
+chemical component influences the quality of wine (0 'very bad' to 10 'very excellent').
+This dataset is public available for research. The details are described in [Cortez et al., 2009].
+
+A dm^3 unit is mentioned in the data set.
+Where dm stands for Decimeter, where 1 decimeter = 10 centimeters.
+Other units are familier.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+# Below code don't let the code out of the page
+library(knitr)
+opts_chunk$set(tidy.opts = list(width.cutoff = 60), tidy = TRUE)
+```
+
+
+# Reading data  
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+rm(list = ls())
+RedWineQuality <- read.csv("~/Desktop/Nanodegree/wineQualityReds.csv")
+```
+
+# Getting overview of data
+
+```{r}
+head(RedWineQuality); tail(RedWineQuality)
+```
+
+
+```{r}
+summary(RedWineQuality)
+str(RedWineQuality)
+```
+
+
+The data does not contains NA values which is cool.
+
+
+# Removing X column(this is unnecessary)
+
+```{r}
+RedWineQuality$X <- NULL
+colnames(RedWineQuality)
+
+```
+
+
+# Histogram of quality
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(RedWineQuality, aes(x = factor(quality))) + 
+    geom_bar(color = I('black'), fill = I('#F79420'))
+
+```
+
+
+```{r}
+table(RedWineQuality$quality)
+```
+
+# Conclusion
+
+Most of the people gave rating 5 and 6. Few of the people really did not like the quality of wine. 
+
+Nobody gave rating 0, 1, 2, 9, 10. This might be because most of the people randomly choose the rating 5 and 6. 
+And surprisingly no body rated 9 and 10 means the wine quality looks not so good.
+
+
+
+
+
+# Acidity Study
+
+Let's see how fixed acidity is distributed
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = fixed.acidity), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.1, color = 'black',fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(4.6, 16, .6), limits = c(4.6, 16)) + 
+    xlab("fixed acidity g/dm^3")
+```
+
+Fixed acidity almost have normal distribution
+
+Lets see the summary of fixed acidity vs quality. 
+I can find summary of all variables but I do not see that is so important here.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+by(RedWineQuality$fixed.acidity, RedWineQuality$quality, summary)
+```
+
+
+Range of fixed acid is low for rating 3 and 8. This is because very few people gave those rating.
+
+Lets see how volatile acidity distributed
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = volatile.acidity), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.02, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0.11, 1.7, .1), limits = c(0.11, 1.7)) + 
+    xlab("Volatile acidity g/dm^3")
+```
+
+Volatile acidity almost have normal distribution.
+
+Lets see how citric acid is distributed
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = citric.acid), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.01, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0, 1, .1), limits = c(0, 1)) + 
+    xlab("Citric acid g/dm^3")
+```
+
+Citric acid is not normally distributed.
+
+What happens if I transfer the citric acid plot using log10
+First I need to make subset of data which contains no zero values of citric acid
+otherwise log gives infinity.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(gridExtra)
+
+citricacid_without_log <- ggplot(aes(x = citric.acid), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.01, fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0, 1, .1), limits = c(0, 1)) + xlab("Citric Acid g/dm^3")
+
+RedWineQuality_citric_grtr0 <- subset(RedWineQuality, citric.acid > 0)
+citricacid_with_log10 <- ggplot(aes(x = citric.acid), data = RedWineQuality_citric_grtr0) +
+  geom_histogram(binwidth = 0.03, fill = '#F79420') + 
+    scale_x_log10(breaks = seq(0.01, 1, .4), limits = c(0.01, 1)) + xlab("Citric Acid g/dm^3")
+
+grid.arrange(citricacid_without_log, citricacid_with_log10, ncol = 2)
+```
+
+
+The transformation is not depecting normality there are lots of peaks which is bad.
+
+
+Plot Acidity vs quality 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+pf <- ggplot(aes(x = as.factor(quality), y = fixed.acidity ), data = RedWineQuality) + 
+    geom_boxplot(color = "red4", fill = '#F79420') + ylim(4.5, 12) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = 'white') + 
+    ylab("Fixed Acidity g/dm^3")
+
+
+pv <-  ggplot(aes(x = as.factor(quality), y = volatile.acidity), data = RedWineQuality) + 
+    geom_boxplot(color = "red4", fill = '#F79420') + 
+    coord_cartesian(ylim = c(0.12, 1.58 )) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = 'white') + 
+    ylab("Volatile Acidity g/dm^3")
+
+
+pc <- ggplot(aes(x = as.factor(quality), y = citric.acid), data = RedWineQuality) + 
+    geom_boxplot(color = "red4", fill = '#F79420') + coord_cartesian(ylim = c(0, 0.75)) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = 'white') + 
+    ylab("Citric Acid g/dm^3")
+
+library(gridExtra)
+grid.arrange(pf, pv, pc, ncol = 3)
+
+```
+
+
+It looks like acidity has predictive capability. 
+As rating increases with increase value of citric acid. 
+The rating decreases with increased value of volatile acidity. 
+
+
+Lets see how quality realtes to those acids value
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(RColorBrewer)
+ggplot(aes(citric.acid, volatile.acidity, colour = as.factor(quality)), 
+       data = RedWineQuality) + 
+  geom_jitter(alpha = 1, size = 3/4) + 
+    scale_color_brewer(type = "div", palette = 7, direction = 1, 
+                       guide = guide_legend(title = 'quality', 
+reverse = TRUE, override.aes = list(alpha = 1, size = 2))) + theme_dark() + 
+    xlab("Citric Acid g/dm^3") + ylab("Volatile Acidity g/dm^3")
+ 
+```
+
+
+From above we can see that most of the high rating is 
+below volatile acidity 0.4 and citric acid between 0.25 to 0.62. 
+There are wines having citric acid values 0 having volatile acidity greater than 0. 
+Rating 6 is randomly distributed throughout the values of citric and volatile acid
+Most of the rating 5 is above the volatile acidity value 0.4 and below 1 except some outliers.
+
+
+
+
+# Residual sugar Study
+
+
+Residual sugar plot
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = residual.sugar), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.3, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0.8, 16,.8), limits = c(0.8, 16)) + 
+    xlab("Residual Sugar g/dm^3")
+
+```
+
+
+Count of wines having sugars more than 6.8 are very low. 
+Wines having sugars value lower than 6.8 are high in number. Although the range is about 14.
+
+
+Lets do the log10 transformation of residual sugar and see what can be seen
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+nolog <- ggplot(aes(x = residual.sugar), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.3, fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0.8, 16, 2), limits = c(0.8, 16)) + 
+    ggtitle("Without log") + 
+    xlab("Residual Sugar g/dm^3")
+
+log <- ggplot(aes(x = residual.sugar), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.02, fill = '#F79420') + 
+    scale_x_log10(breaks = seq(0.8, 16, 3.5), limits = c(0.8, 16)) + 
+    ggtitle("With log10") + 
+    xlab("Residual Sugar g/dm^3") 
+
+grid.arrange(nolog, log, ncol = 2)
+```
+
+
+The log transformation gave slightly better normality than without transformation. 
+Still it looks skewed to the right.
+
+
+Lets break the sugars value and see what we can find.
+
+
+```{r}
+sugargreater6.8 <- subset(RedWineQuality, residual.sugar >= 6.8)
+sugarlessthn6.8 <- subset(RedWineQuality, residual.sugar < 6.8)
+```
+
+
+Let's make plot of sugar greater than 6.8
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(aes(x = as.factor(quality), y = residual.sugar), data = sugargreater6.8) + 
+    geom_boxplot(fill = I('#F79420'), color = "red4") + ylim(6.8, 15.5) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") +  
+    xlab("quality") + ylab("sugargreater6.8") + theme_dark()
+
+```
+
+
+```{r}
+by(sugargreater6.8$residual.sugar, sugargreater6.8$quality, table)
+```
+
+
+
+
+
+Nobody gave rating 3 and 8 for residual sugar value greater than 6.8. 
+Only one people gave rating 4 for residual sugar value greater than 6.8.
+Three people gave raing rating 7.
+Range of the sugar value for rating 6 would be higher than all others if we remove two outliers of rating 5.
+The mean of residual sugar for rating 5 is out of the box because of presence of two outliers.
+
+
+Lets make a plot of sugar less then 6.8
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(aes(x = as.factor(quality), y = residual.sugar), data = sugarlessthn6.8) + 
+    geom_boxplot(fill = I('#F79420'), color = "red4") + ylim(0.8, 6.8) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    xlab("quality") + ylab("sugarlessthn6.8")
+```
+
+Quality 3, 4 and 8 had few outliers thane quality 5, 6 and 7.
+
+
+Lets make a box plot of residual sugar vs quality
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(aes(x = as.factor(quality), y = residual.sugar), data = RedWineQuality) + 
+    geom_boxplot(fill = I('#F79420'), color = "red4") + coord_cartesian(ylim = c(1, 4 )) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    ylab("Residual Sugar g/dm^3")
+```
+
+
+
+
+
+# Conclusion (sugar vs quality)
+
+No people gave rating 3, 4 and 8 for high sugar. 
+This could be because number of people who gave rating 3, 4, 8 are very low all together. 
+For sugar less than 6.8 relation between quality vs sugar has similar as the original relation. 
+It looks like residual sugar is not the best to predict the quality.
+
+
+
+# Alcohol Study
+
+Lets see the distribution of alcohol 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = alcohol), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.1, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(8.3, 15, .5), limits = c(8.3, 15)) + 
+    xlab("alcohol %")
+```
+
+
+
+Alcohal distribution is not normal. It has long tail on the right side.
+Lets see how the log transformation of alcohol looks like
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+alnonlog <- ggplot(aes(x = alcohol), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.1, fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(8.3, 15, .8), limits = c(8.3, 15)) + 
+    ggtitle("Witout log") + xlab("alcohol %")
+
+alwitlog10 <- ggplot(aes(x = alcohol), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.004, fill = '#F79420') + 
+    scale_x_log10(breaks = seq(8.3, 15, .9), limits = c(8.3, 15)) + 
+    ggtitle("With log10, binwidth = 0.004") + xlab("alcohol %")
+library(gridExtra)
+grid.arrange(alnonlog, alwitlog10, ncol = 2)
+```
+
+The log10 distribution almost looks similar to non log. I tried various binwidth, I found with the binwidth = 0.004
+something different in log10 transformation plot. This might be something we need to consider.
+
+Lets see the box plot of alcohol vs quality
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(aes(x = as.factor(quality), y = alcohol), data = RedWineQuality) + 
+    geom_boxplot(color = 'red4', fill = '#F79420') + ylim(8.5, 14) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    ylab("alcohol %") 
+# Adding mean in the box plot, the cross mark are mean
+```
+
+
+Since I found citric acid and alcohol have same type of trend over quality. 
+I want to see how citric acid and alcohol are related vs quality
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+library(RColorBrewer)
+  ggplot(aes(citric.acid, alcohol, colour = as.factor(quality)), data = RedWineQuality) + 
+  geom_jitter(alpha = 1, size = 3/4) + scale_color_brewer(type = "div", 
+  palette = 7, direction = 1, 
+guide = guide_legend(title = 'quality', reverse = TRUE, 
+                     override.aes = list(alpha = 1, size = 2))) + theme_dark() + 
+      ylab("alcohol %") + xlab("Citric Acid g/dm^3")
+ 
+
+```
+
+
+
+
+
+Most of rating 7, 8 are above alcohol value 10 and citric acid between 0.25 to 0.75
+Rating 5 is mostly below the alcohol value 11, and bulk of rating 5 falls below alcohol value 10.
+Rating 6 is randomly distributed throughout the values of alcohol and citric acid.
+Rating 3 falls below alcohol value 10.
+
+
+
+#  Free Sulpher dioxide Study
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = free.sulfur.dioxide), data = RedWineQuality) +
+  geom_histogram(binwidth = 1, color = "black", fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(1, 72, 3), limits = c(1, 72)) + 
+    xlab("Free Sulfur Dioxide mg/dm^3")
+```
+
+
+Free sulfur dioxide is not normally distributed. It has long tail on right.
+
+Lets do the log transformation of free sulfur dioxide and see what we can find
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+f.s_withoutlog <- ggplot(aes(x = free.sulfur.dioxide), data = RedWineQuality) +
+  geom_histogram(binwidth = 1, fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(1, 72, 3), limits = c(1, 72)) + 
+    ggtitle("without log") + 
+    xlab("Free Sulfur Dioxide mg/dm^3")
+
+f.s_withlog <- ggplot(aes(x = free.sulfur.dioxide), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.03, fill = '#F79420') + 
+    scale_x_log10(breaks = seq(1, 72, 9), limits = c(1, 72)) + 
+    ggtitle("with log") + 
+    xlab("Free Sulfur Dioxide mg/dm^3")
+
+grid.arrange(f.s_withoutlog, f.s_withlog, nrow = 2)
+
+```
+
+Not showing normality, not so informative.
+
+
+Lets plot the total sulfur dioxide 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = total.sulfur.dioxide), data = RedWineQuality) +
+  geom_histogram(binwidth = 3, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(6, 289, 12), limits = c(6, 290)) + 
+    xlab("Total Sulfur Dioxide mg/dm^3")
+```
+
+
+
+Plots of sulfur dioxied vs quality
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+p1 <- ggplot(aes(x = as.factor(quality), y = total.sulfur.dioxide ), 
+             data = RedWineQuality) + 
+    geom_boxplot(color = 'red4', fill = '#F79420') + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = 'white') + 
+    scale_y_continuous(limits = c(6, 100)) + 
+    ylab("Total Sulfur Dioxide mg/dm^3")
+
+
+p2 <- ggplot(aes(x = as.factor(quality), y = free.sulfur.dioxide ), 
+             data = RedWineQuality) + 
+    geom_boxplot(color = 'red4', fill = '#F79420') + ylim(1, 30) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = 'white') + 
+    ylab("Free Sulfur Dioxide mg/dm^3")
+
+library(gridExtra)
+library(grid)
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+
+
+I want to see how total sulfur dioxide relates with alcohol. 
+As I saw kind of opposite relation in box plot
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(total.sulfur.dioxide, alcohol), data = RedWineQuality) + 
+    geom_jitter(color = "red", alpha = 1/2, size = 3/4) + xlab("Total Sulfur Dioxide mg/dm^3") + 
+    ylab("Alcohol %")
+```
+
+
+
+Not getting much information. Lets create the bucket of total sulfur dioxide
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+RedWineQuality$total_sulfurdioxide_bucket <- cut(RedWineQuality$total.sulfur.dioxide, 100)
+
+```
+
+Lets plot the total_sulfurdioxide_bucket
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = total_sulfurdioxide_bucket , y = alcohol ), data = RedWineQuality) + 
+    geom_point(alpha = 0.5, size = 3/4, color = 'blue')  + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) + ylab("Alcohol %")
+```
+
+
+Lets make above plot more nicer and clear using colorbrewer
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(RColorBrewer)
+ggplot(aes(total_sulfurdioxide_bucket,alcohol, colour = as.factor(quality)), 
+       data = RedWineQuality) + 
+  geom_jitter(alpha = 1, size = 3/4) + theme_dark() +
+    scale_color_brewer(type = "div", palette = 7, direction = -1, 
+                       guide = guide_legend(title = 'quality', reverse = TRUE, 
+    override.aes = list(alpha = 1, size = 2))) + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+    ggtitle("Total Sulfur dioxide Bucket Plot") + 
+    xlab("Total Sulfur Dioxide Bucket mg/dm^3") + ylab("Alcohol %")
+ 
+```
+
+
+The interesting fact is for the total.sulfur.dioxide value from 99 to 153 
+people gave rating 5 except of some outliers.
+From above plot we see that people rated 5 for alcohol value lower than 11, 
+high for high value of alcohol. 
+Most of the rating 5 falls below the alcohol value 11. 
+Most of the rating 7 lies above the alcohol value 11. Rating 4, 
+6 are randomly distributed. 
+
+
+
+# pH Study
+
+
+Plotting pH to see its distribution
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = pH), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.02, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(2.6, 4.1, .1), limits = c(2.6, 4.1))
+```
+
+pH is normally distributed.
+
+
+pH vs quality plot
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(aes(x = as.factor(quality), y = pH), data = RedWineQuality) + 
+    geom_boxplot(color = 'red4', fill = '#F79420') + ylim(2.74, 4.01) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = 'white')
+
+```
+
+
+
+People gave high rating for low value of pH. pH could be helpful for prediction.
+
+
+
+# Chlorides Study
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = chlorides), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.01, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0.011, 0.612, .1), limits = c(0.011, 0.612)) + 
+    xlab("Sodium Chloride g/dm^3") 
+```
+
+
+
+Chloride is not normally distributed, it has long tail on the right.
+
+Lets create log10 plot for chloride and compare with non log chloride.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+nonlogchloride <- ggplot(aes(x = chlorides), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.01, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0.011, 0.612, .1), limits = c(0.011, 0.612)) + 
+    xlab("Sodium Chloride g/dm^3")
+
+log10chloride <- ggplot(aes(x = chlorides), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.02, fill = '#F79420') + 
+    scale_x_log10(breaks = seq(0.011, 0.612, .3), limits = c(0.011, 0.612)) + 
+    xlab("Sodium Chloride g/dm^3")
+
+grid.arrange(nonlogchloride, log10chloride, ncol = 2)
+```
+
+The log transformation of chlorides gave almost normal distribution except of 3 small picks 
+on the right and one negligible peak around chloride value 0.011.
+
+
+
+Lets study the distribution of chlorides more. It has long tail on the right. 
+I want to subset chlorides value after 0.121
+
+```{r}
+chloridegreater0.12 <- subset(RedWineQuality, chlorides > 0.121)
+chloridelessthn0.12 <- subset(RedWineQuality, chlorides <= 0.121)
+```
+
+
+Making plot of chlorides greater than 0.12
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+ggplot(aes(x = as.factor(quality), y = chlorides), data = chloridegreater0.12) + 
+    geom_boxplot(color = "red4", fill = "#F79420") + 
+    coord_cartesian(ylim = c(0.121, 0.611)) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    xlab("quality") + 
+    ylab("Sodium Chloride greater than 0.12")
+```
+
+
+People did not gave rating 8 for chlorides having value greater than 0.12. 
+Large number of people gave rating 5. Few people gave rating 3 and 7.
+
+
+Making plot of chlorides less then 0.12
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+ggplot(aes(x = as.factor(quality), y = chlorides), data = chloridelessthn0.12) + 
+    geom_boxplot(color = "red4", fill = "#F79420") + 
+    coord_cartesian(ylim = c(0.012, 0.121)) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    ylab("Sodium Chloride less than 0.12 g/dm^3")
+```
+
+
+
+
+plot of quality vs chloride
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+ggplot(aes(x = as.factor(quality), y = chlorides), data = RedWineQuality) + 
+    geom_boxplot(color = "red4", fill = '#F79420') + 
+    coord_cartesian(ylim = c(0.012, 0.2)) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    ylab("Sodium Chloride g/dm^3")
+
+```
+
+
+# Conclusion (Chlorides)
+
+No people rated 8 for having chloride value greater than 0.121. 
+People rated 8 for lowest range of chloride value than the other rating. 
+Chloride could be a variable for prediction. 
+Because people really not liking the higher value of chloride.
+
+
+
+
+# Sulphates Study
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = sulphates), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.01, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0.33, 2, .1), limits = c(0.33, 2)) + 
+    xlab("Potassium sulphate g/dm^3")
+```
+
+Not normally distributed. Long tail on the right.
+
+
+Lets explore more about sulphates. 
+I want to see how quality relates with higher values of sulphate.
+I want to see the subset of sulphates value. 
+
+
+```{r}
+sulphatesgreaterthn_0.94 <- subset(RedWineQuality, sulphates > 0.94)
+sulphateslessthn_0.94 <- subset(RedWineQuality, sulphates <= 0.94)
+```
+
+
+Plotting sulphates greater than 0.94
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+ggplot(aes(x = as.factor(quality), y = sulphates), data = sulphatesgreaterthn_0.94) + 
+    geom_boxplot(color = I('red4'), fill = I('#F79420')) + 
+    coord_cartesian(ylim = c(0.94, 2)) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    xlab("quality") + ylab("Potassium sulphates greater then 0.94")
+```
+
+
+
+For sulphate value greater than 0.94 people did not give rating 3. 
+May be only one people gave rating 8. Most of the people gave rating 4. 
+
+
+Plotting sulphates less than 0.94
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+ggplot(aes(x = as.factor(quality), y = sulphates), data = sulphateslessthn_0.94) + 
+    geom_boxplot(color = I('red4'), fill = I('#F79420')) + 
+    coord_cartesian(ylim = c(0.33, 0.94)) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    xlab("quality") + 
+    ylab("Potassium sulphates less then 0.94")
+```
+
+
+
+
+Plotting quality vs sulphates
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+ggplot(aes(x = as.factor(quality), y = sulphates), data = RedWineQuality) + 
+    geom_boxplot(color = I('red4'), fill = I('#F79420')) + 
+    coord_cartesian(ylim = c(0.33, 1.2)) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") + 
+    ylab("Potassium sulphate g/dm^3")
+```
+
+
+
+# Conclusion(sulphates vs quality)
+
+Sulphates greater than 0.94 has no significant contribution quality of wine. 
+For sulphates value lower than 0.94, quality of wine increases with increase in sulphates value. 
+
+
+
+
+
+
+# Density Study
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = density), data = RedWineQuality) +
+  geom_histogram(binwidth = 0.0001, color = 'black', fill = '#F79420') + 
+    scale_x_continuous(breaks = seq(0.99007, 1.00369, .002), 
+                       limits = c(0.99007, 1.00369)) + 
+    xlab("Density g/cm^3")
+```
+
+Density plot looks normally distributed.
+
+
+Plotting quality vs density
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(aes(x = as.factor(quality), y = density), data = RedWineQuality) + 
+    geom_boxplot(color = I('red4'), fill = I('#F79420')) + 
+    coord_cartesian(ylim = c(0.99007, 1.00369 )) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = 'white') + 
+    ylab("Density g/cm^3")
+```
+
+
+
+# Conclusion(Density vs quality)
+
+Density could be predictor for quality as it has trend. 
+For higher value of density quality is low and for lower value of density, quality is high.
+
+
+Let's find out correlation coefficient between quality and other variables. 
+Remove sulfurdioxide_bucket as it does not
+necessary for prediction.
+
+
+# Correlation coefficient
+
+
+```{r}
+# Removing unneeded columns
+
+x <- subset(RedWineQuality, select = -c(total_sulfurdioxide_bucket, quality))
+y <- RedWineQuality$quality
+cor(x, y)
+```
+
+Only alcohol seems slighty better than other variables for prediction.
+
+Using ggcorr function from GGally library to see the correlation matrix. 
+Which giving same realtion as we saw above.
+ 
+```{r}
+x1 <- subset(RedWineQuality, select = -c(total_sulfurdioxide_bucket))
+library(GGally)
+ggcorr(x1, label = TRUE)
+```
+
+# Bar plots
+
+From above correlation matrix it is seen that fixed acidity and density 
+are +vely strongly related.
+pH and fixed acidity are -Vely strongly correlated.
+So I want to see their line graph and how they relates with quality. 
+I am inserting quality in everywhere because I am looking how quality of 
+wine influenced by other variables.
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(RColorBrewer)
+scatter1 <- ggplot(aes(density, fixed.acidity, colour = as.factor(quality)), 
+       data = RedWineQuality) + 
+  geom_jitter(alpha = 1, size = 3/4) + 
+    scale_color_brewer(type = "seq", palette = 4, direction = 1, 
+guide = guide_legend(title = 'quality', reverse = TRUE, 
+                     override.aes = list(alpha = 1, size = 2))) + 
+    theme_dark() + xlab("Density g/cm^3")
+
+scatter2 <- ggplot(aes(pH, fixed.acidity, colour = as.factor(quality)), 
+       data = RedWineQuality) + 
+  geom_jitter(alpha = 1, size = 3/4) + 
+    scale_color_brewer(type = "seq", palette = 7, direction = 1, 
+guide = guide_legend(title = 'quality', 
+                     reverse = TRUE, override.aes = 
+                         list(alpha = 1, size = 2))) + theme_dark() + 
+    xlab("Density g/cm^3")
+grid.arrange(scatter1, scatter2, nrow = 2)
+
+```
+
+
+What is +ve and -ve correlation mean here?
+In +ve correlation : Value of fixed acidity increasing with increasing value of density
+In -ve correlation : Value of fixed acidity increasing with decreasing value of pH
+
+Lets make bins of density and pH and plot them
+
+```{r}
+RedWineQuality$density_bins <- cut(RedWineQuality$density, 5)
+RedWineQuality$pH_bins <- cut(RedWineQuality$pH, 5)
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(RedWineQuality, aes(density_bins, fixed.acidity,  fill = factor(quality))) +
+  geom_bar(position = "dodge", stat = "identity") + 
+    ggtitle("Fixed acidity vs Grouped density Plot") + 
+    xlab("Grouped density g/cm^3") + ylab("Fixed Acidity g/dm^3")
+```
+
+No 3,4 rating for low value of acidtity and fixed acidity. No 3, 8 rating for high value of
+density and Fixed acidity. More people gave rating 5 for high value of Fixed acidity and middle
+value of density.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(RedWineQuality, aes(pH_bins, fixed.acidity,  fill = factor(quality))) +
+  geom_bar(position = "dodge", stat = "identity") + 
+    ggtitle("Fixed acidity vs Grouped pH Plot") + 
+    xlab("Grouped pH") + ylab("Fixed Acidity g/dm^3")
+```
+
+No 3, 5, 8 rating for high value of pH. If we consider rating 4 is outlier and keeping in mind
+that count of people for rating 8 is low, we could say that people liked wine having 
+low value of fixed acidity and high value of pH.
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+
+
+smooth1 <- ggplot(aes(x = density, y = fixed.acidity),
+       data = RedWineQuality) +
+  geom_smooth(aes(color = as.factor(quality))) + 
+    ggtitle("smooth line plot of 'Fixed acidty' vs Density") + xlab("Density g/cm^3") + 
+    ylab("Fixed Acidity g/dm^3")
+
+smooth2 <- ggplot(aes(x = pH, y = fixed.acidity),
+       data = RedWineQuality) +
+  geom_smooth(aes(color = as.factor(quality))) + 
+    ggtitle("smooth line plot of 'Fixed acidty' vs pH") + ylab("Fixed Acidity g/dm^3")
+
+grid.arrange(smooth1, smooth2, nrow = 2)
+
+
+```
+
+
+It is seen from above plots that quality 3 requires highest value of 
+confidence interval for prediction.
+
+
+
+
+# Question. 
+
+Can I increase linearity if I transfer the variables? Lets see.
+
+
+```{r}
+log10_residual_sugar <- log10(RedWineQuality$residual.sugar)
+a <- (RedWineQuality$quality)
+cor(a, log10_residual_sugar)
+
+cor(RedWineQuality$quality, RedWineQuality$residual.sugar)
+```
+
+
+
+```{r}
+log10_chlorides <- log10(RedWineQuality$chlorides)
+a <- (RedWineQuality$quality)
+cor(a, log10_chlorides)
+
+cor(RedWineQuality$quality, RedWineQuality$chlorides)
+```
+
+
+
+```{r}
+log10_sulphates <- log10(RedWineQuality$sulphates)
+a <- (RedWineQuality$quality)
+cor(a, log10_sulphates)
+
+cor(RedWineQuality$quality, RedWineQuality$sulphates)
+```
+
+What happened when I did the log10 transformation of other variables.
+
+1) I found decrease in R for doing log10 of quality and fixed.acidity. 
+2) Same for volatile aciditly. 
+3) I found R low for removing citric acid equals to zero and doing log10 transformation. 
+4) R for log10_residual_sugar is slightly greater. 
+5) I found log_10_chlorides more predictive than chlorides. 
+6) R for free sulfur dioxide remainded same. 
+7) Remained almost same for total sulfur dioxide. 
+8) R remained same for density after transformation. 
+9) Remained same for pH. 
+10) R increases with log10 in sulphates. 
+11) Remained same for alcohol.
+
+
+
+
+# Predictive modeling (Linear modeling for quality)
+
+
+
+# Data partition
+
+
+```{r}
+library(caret)
+library(lattice)
+set.seed(1234)
+trainIndex <- createDataPartition(RedWineQuality$quality, p = .8, list = FALSE)
+head(trainIndex)
+train_data <- RedWineQuality[trainIndex, ]
+test_data <- RedWineQuality[-trainIndex, ]
+```
+
+
+
+# Fit Linear model on the traingin dataset
+
+Since log10 transformation of sugar, chloride and sulphates have slightly 
+higher correlation coeff with quality. 
+So make the model accordingly
+
+```{r}
+fit <- lm(quality ~ fixed.acidity + volatile.acidity + citric.acid + 
+              I(log10(residual.sugar)) + 
+              I(log10(chlorides)) + free.sulfur.dioxide + 
+              total.sulfur.dioxide + density + 
+              pH + I(log10(sulphates)) + alcohol, data = train_data)
+summary(fit)
+```
+
+
+
+
+# Stepwise variable selection
+
+I am using the stepAIC() method in MASS package to do the variable selection. 
+The stepAIC() method performs stepwise model selection by AIC( Akaike information criterion, 
+a measure used to evalluate the relative quality of statistical models)
+
+
+
+```{r echo=TRUE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(MASS)
+# Perform stepwise model selection
+step <- stepAIC(fit, direction = "both")
+```
+
+
+```{r}
+# Show results
+step$anova
+```
+
+
+
+Now I am going to use the model selected by the stepwise selection procedure as the final model
+
+
+```{r}
+fit_final <- lm(quality ~ volatile.acidity + I(log10(chlorides)) + 
+                    free.sulfur.dioxide + 
+    total.sulfur.dioxide + pH + I(log10(sulphates)) + 
+        alcohol, data = train_data)
+
+summary(fit_final)
+```
+
+
+```{r}
+# Plot fit_final
+plot(fit_final)
+
+```
+
+
+
+# Evaluate Predictive performance of the final model
+
+
+```{r}
+# Predict the rating on testing set
+nrow(test_data)
+Pred <- predict(fit_final, data = test_data)
+
+```
+
+
+```{r}
+# Plot the Rating vs Predicted rating
+plot(test_data$quality, Pred[1:318])
+```
+
+The test data predicted all quality well.
+
+
+
+# Three final plots
+
+These are the three plots which caught my eyes with some interesting informations.
+
+
+# First Plot
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(RColorBrewer)
+ggplot(aes(total_sulfurdioxide_bucket,alcohol, colour = as.factor(quality)), 
+       data = RedWineQuality) + 
+  geom_jitter(alpha = 1, size = 3/4) + theme_dark() +
+    scale_color_brewer(type = "div", palette = 7, direction = -1, 
+                       guide = guide_legend(title = 'quality', reverse = TRUE, 
+    override.aes = list(alpha = 1, size = 2))) + 
+    theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+    ggtitle("Total Sulfurdioxide Bucket vs Alcohol plot") + ylab("Alcohol %") + 
+    xlab("Total Sulfur dioxide bucket mg/dm^3")
+ 
+```
+
+The above plot giving me the information that for the total sulfur dioxide value greater than
+105, people gave rating only 5 except of some outliers of 6 and 7 rating. 
+Which is quite interesting.
+
+# Second Plot
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+library(ggplot2)
+ggplot(aes(x = as.factor(quality), y = residual.sugar), data = sugargreater6.8) + 
+    geom_boxplot(fill = I('#F79420'), color = "red4") + ylim(6.8, 15.5) + 
+    stat_summary(fun.y = mean, geom = 'point', shape = 1, color = "white") +  
+    xlab("quality") + ylab("Residual Sugar greater than 6.8 g/dm^3") + 
+    ggtitle("Residual Sugar greater than 6.8 vs quality Plot") + theme_dark()
+
+```
+
+
+Nobody gave rating 3 and 8 for residual sugar value greater than 6.8. 
+Only one people gave rating 4 for residual sugar value greater than 6.8.
+Three people gave raing rating 7.
+Range of the sugar value for rating 6 would be higher than all 
+others if we remove two outliers of rating 5.
+The mean of residual sugar for rating 5 is out of the box because of presence of two outliers.
+
+
+# Third Plots
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = density, y = fixed.acidity),
+       data = RedWineQuality) +
+  geom_smooth(aes(color = as.factor(quality))) + 
+    ggtitle("smooth line plot of Fixed acidty vs Density") + 
+    xlab("Density g/cm^3") + ylab("Fixed Acidity g/dm^3")
+```
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
+ggplot(aes(x = pH, y = fixed.acidity),
+       data = RedWineQuality) +
+  geom_smooth(aes(color = as.factor(quality))) + 
+    ggtitle("smooth line plot of Fixed acidty vs pH") + 
+    ylab("Fixed Acidity g/dm^3")
+```
+
+The above 2 smoothed plots were interesting to me because those were providing tentetive idea 
+how smoothed data of fixed acidity vs density and fixed acidity vs pH are helpful to predict
+the quality of wine. But interesting thing is that my modedl only selected pH for quality
+prediction. While exploring density I was thinking that density could be the good predictor
+but my model disproved that. 
+
+
+
+# Reflection
+
+For the whole data set most of the people gave rating 5 and 6. Nobody gave rating 0, 1, 2, 9, 10. 
+This might be because most of the people randomly choose the rating 5 and 6. 
+And surprisingly no body rated 9 and 10 means the wine quality might not be good in reality.
+
+I first thought that acidity has predictive capability. 
+As quality increases with increase value of citric acid and decreases with increased 
+value of volatile acidity.
+
+For residual sugar nobody gave rating 3 and 8 for the value greater than 6.8. 
+May be only one people gave rating 4 for residual sugar value greater than 6.8.
+Most of the rating 5 falls below the alcohol value 11. 
+Most of the rating 7 lies above the alcohol value 11. Rating 4, 6 are randomly distributed. 
+
+The interesting fact is for the total.sulfur.dioxide value from 99 to 153 people gave rating 5 
+except of some outliers.
+
+People gave high rating for low value of pH. 
+
+No people rated 8 for having chloride value greater than 0.121. 
+
+For sulphate value greater than 0.94 people did not give rating 3. 
+May be only one people gave rating 8. Most of the people gave rating 4.
+
+Density showed predictor for quality as it has trend. 
+For higher value of density quality is low and for lower value of density, quality is high.
+
+The linear model gave me seven final variabes (volatile.acidity, log10(chlorides), 
+free.sulfur.dioxide, total.sulfur.dioxide, pH, log10(sulphates), alcohol) for prediction of quality of wine. 
+
+But it is not the final conclusion. There might be other variables(which are not present in our data) 
+we need to consider for wine quality prediction.
+
+# Alternative way of analysis
+
+We could go with the other way of analysis by dividing the quality into three groups eg: low, medium and high 
+
+
+
+
+
+
+
